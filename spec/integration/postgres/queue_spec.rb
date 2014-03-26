@@ -6,9 +6,9 @@ describe TestQueue do
   let(:model) { TestQueue.instance_variable_get(:@model) }
   let(:mem_queue) { TestQueue.instance_variable_get(:@mem_queue) }
   let(:redis) { Redis.new(db: 14) }
+
   before do
     mem_queue.stub(:redis) { redis }
-    TestQueue.send(:set_val, 1)
     model.delete_all
     model.connection.execute("select setval('#{model.table_name}_id_seq', 1)")
   end
@@ -35,20 +35,26 @@ describe TestQueue do
 
   describe '#push' do
     it 'creates the expected associated data' do
-      TestQueue.send(:query_next_val)
       TestQueue.push('data')
 
-      expect(model.first.attributes).to eq({
-        'action' => TestQueue::PUSH,
-        'data' => {'id' => '2', 'data' => 'data'},
-        'id' => 1,
-        'item_id' => 2
-      })
+      expect(model.first.attributes).to eq(
+        'id' => 2,
+        'wrapped_data' => { 'data' => 'data'}
+      )
 
-      expect(mem_queue.pop).to eq({
-        'id' => '2',
+      expect(mem_queue.pop).to eq(
+        'id' => 2,
         'data' => 'data'
-      })
+      )
+    end
+  end
+
+  describe '#pop' do
+    it 'yields the expected data' do
+      TestQueue.push('data')
+      result = nil
+      TestQueue.pop { |data| result = data }
+      expect(result).to eq 'data'
     end
   end
 end

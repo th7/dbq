@@ -5,5 +5,5 @@ require 'redis'
 Gem.find_files("dbq/**/*.rb").each { |path| require path }
 
 module DBQ
-  class DBQ::Error < StandardError; end
+  class Error < StandardError; end
 end

@@ -1,7 +1,5 @@
 module DBQ
   class Queue
-    PUSH = 'PUSH'
-
     class << self
       attr_accessor :table_name
 
@@ -15,21 +13,30 @@ module DBQ
       end
 
       def push(data)
-        next_val = query_next_val
-        wrapped_data = { 'id' => next_val, 'data' => data }
-        durable_item = @model.create!(item_id: next_val, action: PUSH, data: wrapped_data)
+        durable_item = @model.create!(wrapped_data: {'data' => data})
+        wrapped_data = { 'id' => durable_item.id, 'data' => data }
+
+        # move this to an after_commit hook?
         @mem_queue.push(wrapped_data)
       end
 
-      private
+      def pop
+        raise LocalJumpError, 'no block given' unless block_given?
 
-      def query_next_val
-        @model.connection.execute("select nextval('#{@model.table_name}_item_id_sequence')").first['nextval']
+        begin
+          wrapped_data = @mem_queue.pop
+          yield wrapped_data['data']
+        rescue Exception => e
+          @mem_queue.push(wrapped_data)
+          raise e
+        end
+
+        @model.find(wrapped_data['id']).destroy
       end
     end
 
     def initialize
-      raise DBQ::Error, "#{self.class} must be subclassed" if self.class == Queue
+      raise DBQ::Error, "Do not initialize. Subclass and use SubClass.push/pop."
     end
   end
 end
