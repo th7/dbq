@@ -1,5 +1,5 @@
 require "dbq/version"
 
-module Dbq
+module DBQ
   # Your code goes here...
 end
