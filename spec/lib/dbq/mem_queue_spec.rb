@@ -14,14 +14,14 @@ describe DBQ::MemQueue do
 
   describe '#push' do
     it 'pushes data to the appropriate queue' do
-      expect(test_redis).to receive(:lpush).with('DBQ:test_queue', 'data')
+      expect(test_redis).to receive(:lpush).with('DBQ:test_queue', 'data'.to_json)
       mem_queue.push('data')
     end
   end
 
   describe '#pop' do
     it 'pops data to the appropriate queue' do
-      expect(test_redis).to receive(:brpop).with('DBQ:test_queue')
+      expect(test_redis).to receive(:brpop).with('DBQ:test_queue').and_return(['junk', { 'who' => 'cares' }.to_json])
       mem_queue.pop
     end
   end

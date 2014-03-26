@@ -8,11 +8,11 @@ module DBQ
     end
 
     def push(data)
-      redis.lpush(queue_key, data)
+      redis.lpush(queue_key, data.to_json)
     end
 
     def pop
-      redis.brpop(queue_key)
+      JSON.parse(redis.brpop(queue_key).last)
     end
 
     private
