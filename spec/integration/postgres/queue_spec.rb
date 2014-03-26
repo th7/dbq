@@ -3,8 +3,9 @@ require 'spec_helper'
 class TestQueue < DBQ::Queue; end
 
 describe TestQueue do
-  let(:model) { TestQueue.instance_variable_get(:@model) }
-  let(:mem_queue) { TestQueue.instance_variable_get(:@mem_queue) }
+  let(:test_queue) {TestQueue.new('test_queues')}
+  let(:model) { test_queue.instance_variable_get(:@model) }
+  let(:mem_queue) { test_queue.instance_variable_get(:@mem_queue) }
   let(:redis) { Redis.new(db: 14) }
 
   before do
@@ -35,10 +36,11 @@ describe TestQueue do
 
   describe '#push' do
     it 'creates the expected associated data' do
-      TestQueue.push('data')
+      test_queue.push('data')
 
       expect(model.first.attributes).to eq(
         'id' => 2,
+        'queue_name' => 'test_queues',
         'wrapped_data' => { 'data' => 'data'}
       )
 
@@ -50,11 +52,31 @@ describe TestQueue do
   end
 
   describe '#pop' do
-    it 'yields the expected data' do
-      TestQueue.push('data')
-      result = nil
-      TestQueue.pop { |data| result = data }
-      expect(result).to eq 'data'
+    before do
+      test_queue.push('data')
+    end
+
+    context 'no error is raised' do
+      it 'yields the expected data' do
+        result = nil
+        test_queue.pop { |data| result = data }
+        expect(result).to eq 'data'
+      end
+    end
+
+    context 'an error is raised' do
+      it 'pushes the item back to the queue' do
+        result = nil
+        expect { test_queue.pop { |data| raise } }.to raise_error
+        test_queue.pop { |data| result = data }
+        expect(result).to eq 'data'
+      end
+
+      it 'does not destroy the associated item in the db' do
+        expect {
+          expect { test_queue.pop { |data| raise } }.to raise_error
+        }.not_to change { model.count }
+      end
     end
   end
 end
