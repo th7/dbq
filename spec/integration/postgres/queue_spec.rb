@@ -13,4 +13,11 @@ describe TestQueue do
       expect(model.table_name).to eq 'test_queues'
     end
   end
+
+  context 'its mem_queue class' do
+    let(:mem_queue) { TestQueue.instance_variable_get(:@mem_queue) }
+    it 'has the correct queue_key' do
+      expect(mem_queue.send(:queue_key)).to eq 'DBQ:test_queues'
+    end
+  end
 end
