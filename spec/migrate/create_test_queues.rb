@@ -6,6 +6,8 @@ module Migrate
         t.string :action
         t.json :data
       end
+
+      execute 'create sequence test_queues_item_id_sequence'
     end
   end
 end

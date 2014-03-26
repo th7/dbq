@@ -3,6 +3,9 @@ require 'pg'
 
 RSpec.configure do |config|
   config.order = 'random'
+  config.before(:suite) do
+    system 'rake db:test:prepare'
+  end
 end
 
 # only testing on postgres for now
