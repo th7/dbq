@@ -8,6 +8,9 @@ describe TestQueue do
   let(:redis) { Redis.new(db: 14) }
   before do
     mem_queue.stub(:redis) { redis }
+    TestQueue.send(:set_val, 1)
+    model.delete_all
+    model.connection.execute("select setval('#{model.table_name}_id_seq', 1)")
   end
 
   after do
