@@ -5,7 +5,7 @@ require 'dbq/version'
 
 Gem::Specification.new do |spec|
   spec.name          = "dbq"
-  spec.version       = Dbq::VERSION
+  spec.version       = DBQ::VERSION
   spec.authors       = ["TH"]
   spec.email         = ["tyler.hartland@code42.com"]
   spec.summary       = %q{Durable queues which commit with database transactions.}
