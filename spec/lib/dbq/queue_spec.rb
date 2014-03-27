@@ -1,5 +1,5 @@
-require 'spec_helper'
+# require 'spec_helper'
 
-describe DBQ::Queue do
+# describe DBQ::Queue do
 
-end
+# end

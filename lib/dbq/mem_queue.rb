@@ -3,7 +3,7 @@ module DBQ
     NAMESPACE = 'DBQ'
 
     def initialize(queue_name)
-      $redis ||= Redis.new
+      raise DBQ::Error, 'Must specify a queue name' if queue_name.nil? || queue_name.empty?
       @queue_name = queue_name
     end
 
@@ -14,6 +14,11 @@ module DBQ
     def pop
       JSON.parse(redis.brpop(queue_key).last)
     end
+
+    def length
+      redis.llen(queue_key)
+    end
+    alias :count :length
 
     private
 

@@ -2,14 +2,10 @@ require 'spec_helper'
 
 describe DBQ::MemQueue do
   let(:mem_queue) { DBQ::MemQueue.new('test_queue') }
-  let(:test_redis) { Redis.new(db: 14) }
-
-  before do
-    mem_queue.stub(:redis).and_return { test_redis }
-  end
+  let(:test_redis) { mem_queue.send(:redis) }
 
   after do
-    test_redis.flushdb
+    mem_queue.send(:redis).flushdb
   end
 
   describe '#push' do
