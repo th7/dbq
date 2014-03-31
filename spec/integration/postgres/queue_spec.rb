@@ -23,15 +23,15 @@ describe TestQueue do
     let(:value) { {'expected' => 'changed_attrs'} }
 
     before do
-      klass.push(value)
+      klass.push(data: value)
     end
 
     it 'can pop the item back out' do
-      expect(klass.pop).to eq value
+      expect(klass.pop.data).to eq value
     end
 
     it 'destroys the item' do
-      expect { klass.pop }.to change { klass.count }.from(1).to(0)
+      expect { klass.pop.data }.to change { klass.count }.from(1).to(0)
     end
 
     context 'the transaction is rolled back' do
@@ -55,9 +55,9 @@ describe TestQueue do
 
   context 'multiple items are popped simultaneously' do
     before do
-      klass.push(1)
-      klass.push(2)
-      klass.push(3)
+      klass.push(data: 1)
+      klass.push(data: 2)
+      klass.push(data: 3)
     end
 
     it 'only pops each item once' do
@@ -66,7 +66,7 @@ describe TestQueue do
         simultaneous_pop,
         simultaneous_pop
       ]
-      results = result_threads.map(&:value)
+      results = result_threads.map(&:value).map(&:data)
       expect(results.sort).to eq [ 1, 2, 3 ]
     end
   end

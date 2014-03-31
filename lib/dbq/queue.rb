@@ -1,21 +1,11 @@
 module DBQ
   module Queue
     def self.included(receiver)
-      receiver.after_rollback :return!
+      receiver.include BasicQueue
       receiver.extend ClassMethods
     end
 
     module ClassMethods
-      def pop
-        item = check_out_item
-        item.try(:destroy)
-        item.try(:data)
-      end
-
-      def push(data)
-        create!(wrapped_data: { 'data' => data })
-      end
-
       private
 
       def check_out_item
@@ -33,18 +23,6 @@ module DBQ
         thread.abort_on_exception = true
         thread.value
       end
-    end
-
-    def release!
-      self.update_attributes!(checked_out_at: Time.now)
-    end
-
-    def return!
-      self.class.update(id, checked_out_at: nil)
-    end
-
-    def data
-      wrapped_data['data'] if wrapped_data
     end
   end
 end
