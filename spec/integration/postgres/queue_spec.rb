@@ -1,75 +1,89 @@
-# require 'spec_helper'
+require 'spec_helper'
 
-# class TestQueue < DBQ::Queue; end
+class TestQueue < ActiveRecord::Base
+  include DBQ::Queue
+end
 
-# describe TestQueue do
-#   let(:test_queue) {TestQueue.new('test_queues')}
-#   let(:model) { test_queue.instance_variable_get(:@model) }
-#   let(:mem_queue) { test_queue.instance_variable_get(:@mem_queue) }
+describe TestQueue do
+  let(:klass) { TestQueue }
 
-#   after do
-#     mem_queue.send(:redis).flushdb
-#   end
+  before do
+    klass.connection_pool.with_connection do
+      klass.delete_all
+    end
+  end
 
-#   context 'its anonymous model class' do
-#     it 'has a database connection' do
-#       expect { model.all }.not_to raise_error
-#     end
+  after do
+    klass.connection_pool.with_connection do
+      klass.delete_all
+    end
+  end
 
-#     it 'connects to the correct table' do
-#       expect(model.table_name).to eq 'test_queues'
-#     end
-#   end
+  context 'a single item exists' do
+    let(:value) { {'expected' => 'changed_attrs'} }
 
-#   context 'its mem_queue class' do
-#     it 'has the correct queue_key' do
-#       expect(mem_queue.send(:queue_key)).to eq 'DBQ:test_queues'
-#     end
-#   end
+    before do
+      klass.push(value)
+    end
 
-#   describe '#push' do
-#     it 'creates the expected associated data' do
-#       test_queue.push('data')
+    it 'can pop the item back out' do
+      expect(klass.pop).to eq value
+    end
 
-#       expect(model.first.attributes).to eq(
-#         'id' => 1,
-#         'queue_name' => 'test_queues',
-#         'wrapped_data' => { 'data' => 'data'}
-#       )
+    it 'destroys the item' do
+      expect { klass.pop }.to change { klass.count }.from(1).to(0)
+    end
 
-#       expect(mem_queue.pop).to eq(
-#         'id' => 1,
-#         'data' => 'data'
-#       )
-#     end
-#   end
+    context 'the transaction is rolled back' do
+      it 'does not destroy the item' do
+        expect {
+          klass.transaction { klass.pop; raise ActiveRecord::Rollback }
+        }.not_to change {
+          klass.count
+        }.from(1)
+      end
 
-#   describe '#pop' do
-#     before do
-#       test_queue.push('data')
-#     end
+      it 'resets checked_out_at to nil' do
+        expect {
+          klass.transaction { klass.pop; raise ActiveRecord::Rollback }
+        }.not_to change {
+          klass.first.checked_out_at
+        }.from(nil)
+      end
+    end
+  end
 
-#     context 'no error is raised' do
-#       it 'yields the expected data' do
-#         # result = nil
-#         #  { |data| result = data }
-#         expect(test_queue.pop).to eq 'data'
-#       end
-#     end
+  context 'multiple items are popped simultaneously' do
+    before do
+      klass.push(1)
+      klass.push(2)
+      klass.push(3)
+    end
 
-#     context 'an error is raised' do
-#       # it 'pushes the item back to the queue' do
-#       #   result = nil
-#       #   expect { test_queue.pop { |data| raise } }.to raise_error
-#       #   test_queue.pop { |data| result = data }
-#       #   expect(result).to eq 'data'
-#       # end
+    it 'only pops each item once' do
+      result_threads = [
+        simultaneous_pop,
+        simultaneous_pop,
+        simultaneous_pop
+      ]
+      results = result_threads.map(&:value)
+      expect(results.sort).to eq [ 1, 2, 3 ]
+    end
+  end
+end
 
-#       # it 'does not destroy the associated item in the db' do
-#       #   expect {
-#       #     expect { test_queue.pop { |data| raise } }.to raise_error
-#       #   }.not_to change { model.count }
-#       # end
-#     end
-#   end
-# end
+def simultaneous_pop(at=Time.now + 0.1)
+  thread = Thread.new do
+    result = nil
+    klass.connection_pool.with_connection do
+      klass.transaction do
+        sleep_for = at - Time.now
+        sleep sleep_for if sleep_for > 0
+        result = klass.pop
+      end
+    end
+    result
+  end
+  thread.abort_on_exception = true
+  thread
+end

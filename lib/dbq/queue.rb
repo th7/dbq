@@ -1,30 +1,50 @@
-# module DBQ
-#   class Queue
-#     class << self
-#       def inherited(subclass)
-#         table_name = subclass.to_s.underscore.pluralize
+module DBQ
+  module Queue
+    def self.included(receiver)
+      receiver.after_rollback :return!
+      receiver.extend ClassMethods
+    end
 
-#         subclass.instance_variable_set(:@model, Class.new(ActiveRecord::Base))
-#         subclass.instance_variable_get(:@model).table_name = table_name
-#       end
-#     end
+    module ClassMethods
+      def pop
+        item = check_out_item
+        item.try(:destroy)
+        item.try(:data)
+      end
 
-#     def initialize(queue_name)
-#       @queue_name = queue_name
-#       @mem_queue = DBQ::MemQueue.new(queue_name)
-#       @model = DBQ::DbModel
-#       @model.table_name = queue_name
-#       @model.mem_queue = @mem_queue
-#     end
+      def push(data)
+        create!(wrapped_data: { 'data' => data })
+      end
 
-#     def push(data)
-#       @model.create!(queue_name: @queue_name, wrapped_data: {'data' => data})
-#     end
+      private
 
-#     def pop
-#       wrapped_data = @mem_queue.pop
-#       @model.find(wrapped_data['id']).destroy
-#       wrapped_data['data']
-#     end
-#   end
-# end
+      def check_out_item
+        thread = Thread.new do
+          item = nil
+          connection_pool.with_connection do
+            transaction do
+              item = where(checked_out_at: nil)
+              .order(id: :asc).limit(1).lock(true).first
+              item.try(:release!)
+            end
+          end
+          item
+        end
+        thread.abort_on_exception = true
+        thread.value
+      end
+    end
+
+    def release!
+      self.update_attributes!(checked_out_at: Time.now)
+    end
+
+    def return!
+      self.class.update(id, checked_out_at: nil)
+    end
+
+    def data
+      wrapped_data['data'] if wrapped_data
+    end
+  end
+end
