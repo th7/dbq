@@ -34,7 +34,7 @@ class MyQueue < ActiveRecord::Base
 end
 ```
 
-Push some data onto your queue (push is, for now, synonymous with create!):
+Push some data onto your queue (push is, for now, synonymous with create):
 
 ```MyQueue.push(my_data: 'some data')```
 
