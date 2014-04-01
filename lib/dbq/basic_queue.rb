@@ -12,8 +12,12 @@ module DBQ
         item
       end
 
-      def push(opts)
+      def push!(opts)
         create!(opts)
+      end
+
+      def push(opts)
+        create(opts)
       end
 
       private
