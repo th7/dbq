@@ -21,7 +21,7 @@ module DBQ
           connection_pool.with_connection do
             transaction do
               item = find_by_sql(check_out_query).first
-              item.try(:release!)
+              item.try(:check_out!)
             end
           end
           item

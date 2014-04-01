@@ -15,7 +15,7 @@ module DBQ
             transaction do
               item = where(checked_out_at: nil)
               .order(id: :asc).limit(1).lock(true).first
-              item.try(:release!)
+              item.try(:check_out!)
             end
           end
           item

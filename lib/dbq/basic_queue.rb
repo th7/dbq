@@ -1,7 +1,7 @@
 module DBQ
   module BasicQueue
     def self.included(receiver)
-      receiver.after_rollback :return!
+      receiver.after_rollback :check_in!
       receiver.extend ClassMethods
     end
 
@@ -15,13 +15,19 @@ module DBQ
       def push(opts)
         create!(opts)
       end
+
+      private
+
+      def check_out_item
+        raise 'Do not include BasicQueue directly. Maybe you wanted DBQ::Queue?'
+      end
     end
 
-    def release!
+    def check_out!
       self.update_attributes(checked_out_at: Time.now)
     end
 
-    def return!
+    def check_in!
       # necessary if we were frozen by a rolled back destroy call
       self.class.update(id, checked_out_at: nil)
     end
